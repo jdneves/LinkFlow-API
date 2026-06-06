@@ -37,6 +37,7 @@ public class VideoService {
     private final HeyGenClient heyGenClient;
     private final StorageClient storageClient;
     private final JavaMailSender mailSender;
+    private final OnboardingService onboardingService;
 
     // Limite mensal por plano
     private static final int LIMITE_FREE    = 2;
@@ -99,7 +100,7 @@ public class VideoService {
             String heygenVideoId = heyGenClient.submeterVideo(audioUrl, job.getAvatarId());
             job.setHeygenVideoId(heygenVideoId);
             videoJobRepository.save(job);
-
+            onboardingService.concluirPasso(job.getUser(), OnboardingService.PASSO_VIDEO);
             log.info("[Job {}] HeyGen job submetido: heygenId={} — aguardando polling...", jobId, heygenVideoId);
 
         } catch (Exception e) {

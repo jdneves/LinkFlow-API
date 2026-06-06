@@ -31,6 +31,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final OnboardingService onboardingService;
 
     @Value("${linkflow.jwt.refresh-expiration}")
     private long refreshExpiration;
@@ -48,6 +49,7 @@ public class AuthService {
             .build();
 
         userRepository.save(user);
+        onboardingService.inicializar(user);
         log.info("Novo usuário cadastrado: {}", user.getEmail());
 
         return buildAuthResponse(user);

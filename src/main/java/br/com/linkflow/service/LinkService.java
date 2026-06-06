@@ -35,6 +35,7 @@ public class LinkService {
     private final ClickRepository clickRepository;
     private final ProductRepository productRepository;
     private final ScriptRepository scriptRepository;
+    private final OnboardingService onboardingService;
 
     @Value("${linkflow.base-url}")
     private String baseUrl;
@@ -70,6 +71,7 @@ public class LinkService {
             .build();
 
         linkRepository.save(link);
+        onboardingService.concluirPasso(user, OnboardingService.PASSO_LINK);
         log.info("Link criado: slug={} usuário={}", slug, user.getEmail());
 
         return LinkResponse.from(link, baseUrl);

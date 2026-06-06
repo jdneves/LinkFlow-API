@@ -29,6 +29,7 @@ public class ScriptService {
     private final ProductRepository productRepository;
     private final ClaudeClient claudeClient;
     private final ObjectMapper objectMapper;
+    private final OnboardingService onboardingService;
 
     // Limites por plano
     private static final int LIMITE_FREE    = 5;
@@ -73,6 +74,7 @@ public class ScriptService {
             .build();
 
         scriptRepository.save(script);
+        onboardingService.concluirPasso(user, OnboardingService.PASSO_ROTEIRO);
         log.info("Roteiro salvo: id={}", script.getId());
 
         return ScriptResponse.from(script);
