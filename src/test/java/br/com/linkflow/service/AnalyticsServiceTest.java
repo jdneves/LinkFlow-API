@@ -112,7 +112,8 @@ class AnalyticsServiceTest {
 
         assertThat(uso.plano()).isEqualTo("FREE");
         assertThat(uso.limiteRoteiros()).isEqualTo(5);
-        assertThat(uso.limiteVideos()).isEqualTo(2);
+        assertThat(uso.limiteFaceless()).isEqualTo(3);
+        assertThat(uso.limiteAvatar()).isEqualTo(0);  // Bloqueado no FREE
         assertThat(uso.limiteLinks()).isEqualTo(10);
     }
 

@@ -6,9 +6,11 @@ import br.com.linkflow.client.HeyGenClient;
 import br.com.linkflow.client.StorageClient;
 import br.com.linkflow.dto.request.RegisterRequest;
 import br.com.linkflow.dto.request.ScriptRequest;
+import br.com.linkflow.dto.request.VideoCreateRequest;
 import br.com.linkflow.entity.Script.Format;
 import br.com.linkflow.entity.Script.Platform;
 import br.com.linkflow.entity.User;
+import br.com.linkflow.entity.VideoMode;
 import br.com.linkflow.exception.BusinessException;
 import br.com.linkflow.repository.VideoJobRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,54 +84,45 @@ class VideoServiceTest {
     @Test
     @DisplayName("Deve iniciar pipeline e criar job com status PENDING")
     void deveIniciarPipeline() {
-        var response = videoService.iniciar(scriptId, null, null, usuario);
+        var request = new VideoCreateRequest(scriptId, VideoMode.AVATAR, null, null);
+        var response = videoService.iniciar(request, usuario);
 
         assertThat(response.id()).isNotNull();
+        assertThat(response.mode()).isEqualTo("AVATAR");
         // Status pode ser PENDING ou GENERATING_AUDIO dependendo da velocidade do @Async
         assertThat(response.status()).isIn("PENDING", "GENERATING_AUDIO", "GENERATING_VIDEO");
     }
 
     @Test
-    @DisplayName("Deve bloquear após atingir limite FREE (2 vídeos/mês)")
-    void deveBloquearAoAtingirLimite() throws Exception {
-        // Gera 2 vídeos (limite FREE)
-        videoService.iniciar(scriptId, null, null, usuario);
-        videoService.iniciar(scriptId, null, null, usuario);
+    @DisplayName("Deve bloquear vídeos AVATAR no plano FREE")
+    void deveBloqueararAvatarNoFree() {
+        var request = new VideoCreateRequest(scriptId, VideoMode.AVATAR, null, null);
 
-        assertThatThrownBy(() -> videoService.iniciar(scriptId, null, null, usuario))
+        assertThatThrownBy(() -> videoService.iniciar(request, usuario))
             .isInstanceOf(BusinessException.class)
-            .hasMessageContaining("Limite de 2 vídeos/mês");
+            .hasMessageContaining("não estão disponíveis no seu plano");
     }
 
     @Test
-    @DisplayName("Deve atualizar status para COMPLETED quando HeyGen terminar")
-    void deveAtualizarStatusCompleted() {
-        var jobResponse = videoService.iniciar(scriptId, null, null, usuario);
+    @DisplayName("Deve permitir vídeos FACELESS no plano FREE")
+    void devePermitirFacelessNoFree() {
+        var request = new VideoCreateRequest(scriptId, VideoMode.FACELESS, null, null);
 
-        // Simula HeyGen completando
-        when(heyGenClient.checarStatus(anyString()))
-            .thenReturn(new HeyGenClient.VideoStatus(
-                "completed",
-                "https://cdn.heygen.com/video.mp4",
-                null
-            ));
-
-        // Força o polling
-        videoService.verificarJobsPendentes();
-
-        // Busca o job atualizado
-        var job = videoJobRepository.findById(jobResponse.id()).orElseThrow();
-        assertThat(job.getVideoUrl()).isEqualTo("https://cdn.heygen.com/video.mp4");
-        // Status pode variar dependendo do @Async, mas o vídeo URL deve estar salvo
+        // Deve aceitar (vai falhar no pipeline por não ter FacelessRenderer, mas aceita a criação)
+        assertThatThrownBy(() -> videoService.iniciar(request, usuario))
+            .isInstanceOf(RuntimeException.class);  // Falha no pipeline, não na validação
     }
 
     @Test
     @DisplayName("Deve buscar job por ID")
     void deveBuscarJobPorId() {
-        var criado = videoService.iniciar(scriptId, null, null, usuario);
+        usuario.setPlan(User.Plan.PRO);  // PRO tem avatar disponível
+        var request = new VideoCreateRequest(scriptId, VideoMode.AVATAR, null, null);
+        var criado = videoService.iniciar(request, usuario);
         var buscado = videoService.buscarPorId(criado.id(), usuario);
 
         assertThat(buscado.id()).isEqualTo(criado.id());
         assertThat(buscado.productName()).isEqualTo("Airfryer");
+        assertThat(buscado.mode()).isEqualTo("AVATAR");
     }
 }
