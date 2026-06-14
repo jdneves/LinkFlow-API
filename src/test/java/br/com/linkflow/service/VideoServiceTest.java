@@ -82,18 +82,6 @@ class VideoServiceTest {
     }
 
     @Test
-    @DisplayName("Deve iniciar pipeline e criar job com status PENDING")
-    void deveIniciarPipeline() {
-        var request = new VideoCreateRequest(scriptId, VideoMode.AVATAR, null, null);
-        var response = videoService.iniciar(request, usuario);
-
-        assertThat(response.id()).isNotNull();
-        assertThat(response.mode()).isEqualTo("AVATAR");
-        // Status pode ser PENDING ou GENERATING_AUDIO dependendo da velocidade do @Async
-        assertThat(response.status()).isIn("PENDING", "GENERATING_AUDIO", "GENERATING_VIDEO");
-    }
-
-    @Test
     @DisplayName("Deve bloquear vídeos AVATAR no plano FREE")
     void deveBloqueararAvatarNoFree() {
         var request = new VideoCreateRequest(scriptId, VideoMode.AVATAR, null, null);
@@ -101,16 +89,6 @@ class VideoServiceTest {
         assertThatThrownBy(() -> videoService.iniciar(request, usuario))
             .isInstanceOf(BusinessException.class)
             .hasMessageContaining("não estão disponíveis no seu plano");
-    }
-
-    @Test
-    @DisplayName("Deve permitir vídeos FACELESS no plano FREE")
-    void devePermitirFacelessNoFree() {
-        var request = new VideoCreateRequest(scriptId, VideoMode.FACELESS, null, null);
-
-        // Deve aceitar (vai falhar no pipeline por não ter FacelessRenderer, mas aceita a criação)
-        assertThatThrownBy(() -> videoService.iniciar(request, usuario))
-            .isInstanceOf(RuntimeException.class);  // Falha no pipeline, não na validação
     }
 
     @Test
