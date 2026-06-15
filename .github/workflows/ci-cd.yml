@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+# Força JS actions ainda empacotadas em Node 20 (ex.: dorny/test-reporter@v2)
+# a rodar em Node 24, eliminando o aviso de deprecação. Remover quando o upstream
+# publicar versões nativas em Node 24.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: Build e Testes
