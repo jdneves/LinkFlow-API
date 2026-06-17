@@ -73,6 +73,14 @@ ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
 HEYGEN_API_KEY=...
 HEYGEN_AVATAR_ID=...
 
+# Mercado Livre (Radar) — opcional; com ML_ENABLED=false o Radar usa dados mock
+ML_ENABLED=false
+ML_CLIENT_ID=...
+ML_CLIENT_SECRET=...
+ML_REFRESH_TOKEN=...
+ML_SITE_ID=MLB
+ML_AFFILIATE_TAG=...
+
 # Cloudflare R2
 R2_ENDPOINT=https://SEU_ID.r2.cloudflarestorage.com
 R2_ACCESS_KEY=...
@@ -109,6 +117,13 @@ A API estará disponível em `http://localhost:8080`.
 | GET | `/api/radar/trending` | Bearer | Produtos em alta |
 | GET | `/api/radar/{id}` | Bearer | Detalhe do produto |
 | GET | `/api/radar/categorias` | Bearer | Listar categorias disponíveis |
+
+> **Fontes de dados:** o Radar serve sempre do banco/cache, populado pelo
+> scheduler de sync (a cada 6h). Cada plataforma usa seu *provider* real quando
+> habilitado (ex.: `ML_ENABLED=true` para o Mercado Livre) ou cai no provider
+> mock como fallback. As métricas (`score`, `trend`, `scoreDetail`,
+> `estimatedCommission`) são calculadas pelo LinkFlow para todas as fontes — o
+> contrato (`ProductResponse`) é o mesmo independente da origem.
 
 ### Studio (Roteiros)
 
@@ -239,8 +254,8 @@ O pipeline no GitHub Actions (`.github/workflows/ci-cd.yml`) executa em cada pus
 ```
 src/main/java/br/com/linkflow/
 ├── LinkFlowApplication.java
-├── client/                  # Clientes HTTP externos (Claude, ElevenLabs, HeyGen, R2)
-├── config/                  # SecurityConfig, CacheConfig
+├── client/                  # Clientes HTTP externos (Claude, ElevenLabs, HeyGen, R2, Mercado Livre)
+├── config/                  # SecurityConfig, CacheConfig, MercadoLivreProperties
 ├── controller/              # REST endpoints
 ├── dto/
 │   ├── request/             # DTOs de entrada com Bean Validation
@@ -248,6 +263,7 @@ src/main/java/br/com/linkflow/
 ├── entity/                  # Entidades JPA
 ├── exception/               # BusinessException + GlobalExceptionHandler
 ├── mock/                    # Dados mock para desenvolvimento
+├── provider/                # Abstração de fontes de produtos (ProductProvider, mock, Mercado Livre)
 ├── repository/              # Spring Data JPA repositories
 ├── scheduler/               # Jobs agendados (limpeza de tokens, alertas de preço)
 ├── security/                # JwtService + JwtAuthenticationFilter
