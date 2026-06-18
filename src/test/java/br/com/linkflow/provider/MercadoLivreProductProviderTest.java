@@ -3,6 +3,10 @@ package br.com.linkflow.provider;
 import br.com.linkflow.client.MercadoLivreClient;
 import br.com.linkflow.config.MercadoLivreProperties;
 import br.com.linkflow.entity.Product.Platform;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -10,6 +14,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -79,6 +84,30 @@ class MercadoLivreProductProviderTest {
         // Link com a tag de afiliado.
         assertThat(p.productUrl()).contains("matt_tool=AFF123");
         // RawProduct não carrega score/trend.
+    }
+
+    @Test
+    @DisplayName("Instrumenta a coleta: loga contagem por categoria e avisa categorias sem catálogo")
+    void deveInstrumentarContagemPorCategoria() {
+        enqueuePorCategoria();
+
+        Logger logger = (Logger) LoggerFactory.getLogger(MercadoLivreProductProvider.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        provider.fetchCatalog();
+
+        logger.detachAppender(appender);
+        List<ILoggingEvent> logs = appender.list;
+
+        // Resumo com a contagem por categoria (só eletronicos trouxe 1 item).
+        assertThat(logs).anyMatch(e -> e.getFormattedMessage().contains("Itens por categoria")
+            && e.getFormattedMessage().contains("eletronicos=1"));
+        // Categoria sem catálogo gera WARN (ex.: beleza ficou vazia neste cenário).
+        assertThat(logs).anyMatch(e -> e.getLevel() == Level.WARN
+            && e.getFormattedMessage().contains("beleza")
+            && e.getFormattedMessage().contains("não retornou catálogo"));
     }
 
     /**
