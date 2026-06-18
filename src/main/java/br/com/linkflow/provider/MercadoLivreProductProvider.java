@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Provider real do Mercado Livre. Itera as categorias do LinkFlow, busca os
@@ -42,6 +44,7 @@ public class MercadoLivreProductProvider implements ProductProvider {
     @Override
     public List<RawProduct> fetchCatalog() {
         List<RawProduct> catalog = new ArrayList<>();
+        Map<String, Integer> porCategoria = new LinkedHashMap<>();
 
         for (String linkflowCategory : categoryMapper.linkflowCategories()) {
             String mlCategoryId = categoryMapper.mlCategoryId(linkflowCategory);
@@ -51,11 +54,21 @@ public class MercadoLivreProductProvider implements ProductProvider {
             for (MlItem item : items) {
                 catalog.add(toRawProduct(item, linkflowCategory));
             }
+            porCategoria.put(linkflowCategory, items.size());
+
+            // Categoria vazia normalmente indica raiz sem produtos de catálogo
+            // (só USER_PRODUCT/ITEM) — foi o que aconteceu com moda (MLB1430).
+            if (items.isEmpty()) {
+                log.warn("Mercado Livre: categoria '{}' (raiz {}) não retornou catálogo — "
+                    + "provável raiz sem type=PRODUCT; revise o mapeamento da categoria.",
+                    linkflowCategory, mlCategoryId);
+            }
 
             throttle();
         }
 
-        log.info("Mercado Livre: {} produtos coletados.", catalog.size());
+        log.info("Mercado Livre: {} produtos coletados. Itens por categoria: {}",
+            catalog.size(), porCategoria);
         return catalog;
     }
 
