@@ -108,9 +108,13 @@ public class ProductService {
     }
 
     /**
-     * Coleta o catálogo de uma plataforma. Usa o provider real quando habilitado;
-     * em qualquer falha (ou provider desabilitado) cai no {@link MockProductProvider}
-     * da plataforma — o ciclo de sync nunca é derrubado.
+     * Coleta o catálogo de uma plataforma.
+     *
+     * <p>Quando há provider real <b>habilitado</b>, o mock nunca é usado: num ciclo
+     * em que o real venha vazio (token expirado, categoria sem catálogo, rate limit)
+     * mantemos os dados atuais em vez de reinjetar dados falsos — evita que produtos
+     * mock ressuscitem ao lado dos reais. O mock só entra para plataformas sem
+     * provider real habilitado (ex.: Shopee/Amazon). O ciclo de sync nunca é derrubado.</p>
      */
     private List<RawProduct> coletarCatalogo(Platform platform) {
         ProductProvider real = realProviders.get(platform);
@@ -120,10 +124,11 @@ public class ProductService {
                 if (!raw.isEmpty()) {
                     return raw;
                 }
-                log.warn("Provider real de {} não retornou produtos; usando mock.", platform);
+                log.warn("Provider real de {} não retornou produtos; mantendo dados atuais (sem mock).", platform);
             } catch (Exception e) {
-                log.warn("Provider real de {} falhou ({}); usando mock.", platform, e.getMessage());
+                log.warn("Provider real de {} falhou ({}); mantendo dados atuais (sem mock).", platform, e.getMessage());
             }
+            return List.of(); // provider real ativo: nunca injeta mock
         }
         return new MockProductProvider(platform).fetchCatalog();
     }

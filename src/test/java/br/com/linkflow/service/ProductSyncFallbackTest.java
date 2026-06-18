@@ -72,18 +72,20 @@ class ProductSyncFallbackTest {
     }
 
     @Test
-    @DisplayName("Provider real que falha → fallback para o mock (sync não quebra)")
-    void deveCairNoMockQuandoProviderFalha() {
+    @DisplayName("Provider real habilitado que falha → não injeta mock (mantém dados atuais), sync não quebra")
+    void naoDeveInjetarMockQuandoProviderRealFalha() {
         ProductRepository repo = repoQueAceitaTudo();
         ProductProvider mlQuebrado = new FakeProvider(Platform.MERCADO_LIVRE, true, null); // lança
 
         ProductService service = new ProductService(repo, scoringService, List.of(mlQuebrado));
 
-        // Não deve lançar — cai no mock.
+        // Não deve lançar: outras plataformas seguem o ciclo normalmente.
         service.sincronizarProdutos();
 
         List<Product> salvos = capturarSalvos(repo);
-        assertThat(salvos).anyMatch(p -> p.getExternalId().startsWith("ML-0"));
+        // Como o provider real do ML está habilitado, o mock do ML não ressuscita
+        // num ciclo que falhou — evita misturar dados falsos com os reais.
+        assertThat(salvos).noneMatch(p -> p.getExternalId().startsWith("ML-0"));
     }
 
     @Test
