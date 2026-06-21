@@ -79,8 +79,11 @@ public class MercadoLivreProductProvider implements ProductProvider {
             ? searchedCategory
             : categoryMapper.toLinkflowCategory(item.categoryId());
 
-        // TODO: comissão real via programa de afiliados do Mercado Livre.
-        BigDecimal commissionPct = props.getCommissionByCategory().get(category);
+        // O programa de afiliados do ML não expõe API de comissão, então a
+        // comissão vem do mapa de config por categoria. Categorias fora do mapa
+        // caem no fallback para não zerar o peso da comissão (45%) no score.
+        BigDecimal commissionPct = props.getCommissionByCategory()
+            .getOrDefault(category, props.getDefaultCommissionPct());
 
         return new RawProduct(
             item.id(),

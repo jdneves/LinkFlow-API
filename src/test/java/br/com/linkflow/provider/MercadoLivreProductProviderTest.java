@@ -87,6 +87,21 @@ class MercadoLivreProductProviderTest {
     }
 
     @Test
+    @DisplayName("Usa a comissão de fallback quando a categoria não está no mapa de config")
+    void deveUsarComissaoDeFallback() {
+        // Remove a categoria do mapa para forçar o caminho do fallback.
+        props.getCommissionByCategory().clear();
+        props.setDefaultCommissionPct(new BigDecimal("3.5"));
+        enqueuePorCategoria();
+
+        List<RawProduct> catalog = provider.fetchCatalog();
+
+        assertThat(catalog).hasSize(1);
+        // Sem entrada no mapa, a comissão vem do fallback (nunca null → score ok).
+        assertThat(catalog.get(0).commissionPct()).isEqualByComparingTo("3.5");
+    }
+
+    @Test
     @DisplayName("Instrumenta a coleta: loga contagem por categoria e avisa categorias sem catálogo")
     void deveInstrumentarContagemPorCategoria() {
         enqueuePorCategoria();
