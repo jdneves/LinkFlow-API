@@ -61,4 +61,12 @@ public class MercadoLivreProperties {
      * retorna a comissão real do produto.
      */
     private Map<String, BigDecimal> commissionByCategory = new LinkedHashMap<>();
+
+    /**
+     * Comissão (percentual) padrão usada quando a categoria não está em
+     * {@link #commissionByCategory}. Evita que produtos de categorias não
+     * mapeadas fiquem com comissão {@code null} → score zerado no peso da
+     * comissão (45%).
+     */
+    private BigDecimal defaultCommissionPct = new BigDecimal("5.0");
 }
