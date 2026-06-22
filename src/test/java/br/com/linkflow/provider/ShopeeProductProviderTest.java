@@ -125,6 +125,44 @@ class ShopeeProductProviderTest {
             && e.getFormattedMessage().contains("não retornou produtos"));
     }
 
+    @Test
+    @DisplayName("gerarShortLink envia mutation generateShortLink assinada e devolve o shortLink")
+    void deveGerarShortLink() throws Exception {
+        server.enqueue(json("""
+            {"data":{"generateShortLink":{"shortLink":"https://shope.ee/5XyZ7WqR"}}}
+            """));
+
+        ShopeeClient client = new ShopeeClient(props, new ObjectMapper());
+        String shortLink = client.gerarShortLink(
+            "https://shopee.com.br/produto-i.123.456", List.of("s1", "s2"));
+
+        assertThat(shortLink).isEqualTo("https://shope.ee/5XyZ7WqR");
+
+        RecordedRequest request = server.takeRequest();
+        String payload = request.getBody().readUtf8();
+        assertThat(payload).contains("generateShortLink");
+        assertThat(payload).contains("originUrl");
+        assertThat(payload).contains("subIds");
+        // Assinatura coerente com o payload da mutation.
+        String auth = request.getHeader("Authorization");
+        String timestamp = extrair(auth, "Timestamp=");
+        String signature = extrair(auth, "Signature=");
+        assertThat(signature).isEqualTo(sha256Hex("APP123" + timestamp + payload + "SECRET456"));
+    }
+
+    @Test
+    @DisplayName("gerarShortLink devolve null quando a Shopee responde erro GraphQL")
+    void deveDevolverNullEmErroDeShortLink() {
+        server.enqueue(json("""
+            {"errors":[{"message":"invalid url"}]}
+            """));
+
+        ShopeeClient client = new ShopeeClient(props, new ObjectMapper());
+        String shortLink = client.gerarShortLink("https://shopee.com.br/x", null);
+
+        assertThat(shortLink).isNull();
+    }
+
     private static MockResponse umProduto() {
         return json("""
             {"data":{"productOfferV2":{"nodes":[

@@ -78,6 +78,56 @@ public class ShopeeClient {
         }
     }
 
+    /**
+     * Converte uma URL de produto/loja da Shopee em um short link de afiliado
+     * ({@code shope.ee/...}) com até 5 subIds de rastreio, via mutation
+     * {@code generateShortLink}. Retorna {@code null} em qualquer falha.
+     */
+    public String gerarShortLink(String originUrl, List<String> subIds) {
+        if (originUrl == null || originUrl.isBlank()) {
+            return null;
+        }
+        try {
+            String payload = montarPayloadShortLink(originUrl, subIds);
+            String json = chamarGraphQL(payload, "short link de '" + originUrl + "'");
+            if (json == null) {
+                return null;
+            }
+
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode erros = root.path("errors");
+            if (erros.isArray() && !erros.isEmpty()) {
+                log.warn("Shopee retornou erro GraphQL ao gerar short link: {}", erros);
+                return null;
+            }
+
+            String shortLink = root.path("data").path("generateShortLink").path("shortLink").asText(null);
+            return (shortLink == null || shortLink.isBlank()) ? null : shortLink;
+
+        } catch (Exception e) {
+            log.warn("Falha ao gerar short link da Shopee para '{}': {}", originUrl, e.getMessage());
+            return null;
+        }
+    }
+
+    /** Monta o corpo JSON da mutation {@code generateShortLink}. */
+    private String montarPayloadShortLink(String originUrl, List<String> subIds) throws Exception {
+        StringBuilder input = new StringBuilder("originUrl:\"")
+            .append(escaparGraphQL(originUrl)).append('"');
+        if (subIds != null && !subIds.isEmpty()) {
+            String lista = subIds.stream()
+                .limit(5) // a API aceita no máximo 5 subIds
+                .map(s -> "\"" + escaparGraphQL(s) + "\"")
+                .collect(java.util.stream.Collectors.joining(","));
+            input.append(",subIds:[").append(lista).append(']');
+        }
+        String mutation = "mutation{generateShortLink(input:{%s}){shortLink}}".formatted(input);
+
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("query", mutation);
+        return objectMapper.writeValueAsString(body);
+    }
+
     /** Monta o corpo JSON da query {@code productOfferV2} (inline, sem variáveis). */
     private String montarPayload(String keyword, int limit) throws Exception {
         String query = """
